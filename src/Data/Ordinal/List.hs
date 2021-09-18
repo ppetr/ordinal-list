@@ -13,8 +13,8 @@
 -- under the License.
 
 {-# LANGUAGE DeriveFunctor, PatternSynonyms #-}
-module OrdinalList
-    ( Ordinal
+module Data.Ordinal.List
+    ( OList
     , isFinite
     , fromList
     , fromStream
@@ -27,12 +27,12 @@ import qualified Data.Stream as S
 import Prelude hiding (head, tail)
 
 -- | Represents a list indexed by ordinals < ω^ω.
-data Ordinal a
+data OList a
     = Zero
-    | Omega a (Ordinal (Stream a)) [a] -- ^ 1 + ω*α + n
+    | Omega a (OList (Stream a)) [a] -- ^ 1 + ω*α + n
   deriving (Functor)
 
-isFinite :: Ordinal a -> Maybe [a]
+isFinite :: OList a -> Maybe [a]
 isFinite Zero = Just []
 isFinite (Omega x Zero xs) = Just (x : xs)
 isFinite _ = Nothing
@@ -40,17 +40,17 @@ isFinite _ = Nothing
 -- | The input list must be finite, otherwise the ordinal will have a malformed
 -- structure and operations on it will diverge. Use `fromStream` to construct a
 -- correct, infinite one.
-fromList :: [a] -> Ordinal a
+fromList :: [a] -> OList a
 fromList [] = Zero
 fromList (x : xs) = Omega x Zero xs
 
-fromStream :: Stream a -> Ordinal a
+fromStream :: Stream a -> OList a
 fromStream (x `Cons` xs) = Omega x (Omega xs Zero []) []
 
-omega :: Ordinal Integer
+omega :: OList Integer
 omega = fromStream (S.iterate (+ 1) 0)
 
-instance Semigroup (Ordinal a) where
+instance Semigroup (OList a) where
     Zero <> yo = yo
     xo <> Zero = xo
     Omega x xo xs <> Omega y Zero ys
@@ -58,18 +58,18 @@ instance Semigroup (Ordinal a) where
     Omega x xo xs <> Omega y (Omega y' yo ys') ys
         = Omega x (xo <> Omega (foldr Cons (y `Cons` y') xs) yo ys') ys
 
-instance Monoid (Ordinal a) where
+instance Monoid (OList a) where
     mempty = Zero
 
-instance Applicative Ordinal where
+instance Applicative OList where
     pure x = Omega x Zero []
     (<*>) = undefined
 
-instance Alternative Ordinal where
+instance Alternative OList where
     empty = Zero
     (<|>) = (<>)
 
--- There is no `Monad` instance for `Ordinal`.
+-- There is no `Monad` instance for `OList`.
 --
 -- Consider expression `omega >>= \_ -> Zero`. The result would be `Zero`, but
 -- it's not possible to conclude this in a finite number of steps.
