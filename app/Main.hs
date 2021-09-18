@@ -14,7 +14,7 @@
 
 module Main where
 
-import Lib
+import OrdinalList
 
 main :: IO ()
-main = someFunc
+main = undefined
