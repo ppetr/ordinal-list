@@ -16,13 +16,14 @@ name:                ordinal-list
 version:             0.1.0.0
 github:              "ppetr/ordinal-list"
 license:             Apache
+license-file:        LICENSE
 author:              "Petr P."
 maintainer:          "petr.mvd+github@gmail.com"
 copyright:           "2021 Google Inc."
 
 extra-source-files:
 - README.md
-- ChangeLog.md
+- docs/*.md
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
