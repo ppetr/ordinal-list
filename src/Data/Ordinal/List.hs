@@ -14,7 +14,7 @@
 
 {-# LANGUAGE DeriveFunctor, PatternSynonyms #-}
 module Data.Ordinal.List
-    ( OList
+    ( OList(..)  -- TODO: Move constructors into an internal package.
     , isFinite
     , fromList
     , fromStream
