@@ -22,6 +22,7 @@ module Data.Ordinal.List
     ) where
 
 import Control.Applicative
+import Data.Monoid (Endo(..))
 import Data.Stream (Stream(Cons))
 import qualified Data.Stream as S
 import Prelude hiding (head, tail)
@@ -31,6 +32,21 @@ data OList a
     = Zero
     | Omega a (OList (Stream a)) [a] -- ^ 1 + ω*α + n
   deriving (Functor)
+
+-- | Prints a finite fragment of an ordinal list.
+instance (Show a) => Show (OList a) where
+    showsPrec _ = showsOList . fmap shows
+      where
+        showsOList Zero = showString "[]"
+        showsOList (Omega x Zero xt)
+          = showString "[" . x . append xt . showString "]"
+        showsOList (Omega x (Omega xs xo xts) xt)
+          = showString "["
+            . showsOList (prefixOf <$> Omega (x `Cons` xs) xo xts)
+            . append xt . showString "]"
+        prefixOf (x `Cons` xs) =
+            showString "[" . x . append (S.take 3 xs) . showString ",...]"
+        append = appEndo . foldMap (\x -> Endo (showString "," . x))
 
 isFinite :: OList a -> Maybe [a]
 isFinite Zero = Just []
