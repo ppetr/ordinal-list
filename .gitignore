@@ -27,3 +27,4 @@ cabal.project.local~
 # Editor suffixes
 *~
 *.sw[op]
+Session.vim
