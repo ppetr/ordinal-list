@@ -12,5 +12,14 @@
 -- License for the specific language governing permissions and limitations
 -- under the License.
 
+import qualified Data.Ordinal.List.Tests
+import Test.Tasty
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = defaultMain tests
+
+tests :: TestTree
+tests = properties
+
+properties :: TestTree
+properties = testGroup "Properties" [Data.Ordinal.List.Tests.tests]

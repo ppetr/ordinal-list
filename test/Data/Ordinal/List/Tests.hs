@@ -12,7 +12,22 @@
 -- License for the specific language governing permissions and limitations
 -- under the License.
 
+{-# LANGUAGE TemplateHaskell #-}
 module Data.Ordinal.List.Tests where
 
 import Data.Ordinal.List
 import Data.Ordinal.List.Arbitrary
+import Test.QuickCheck
+import Test.Tasty.QuickCheck as QC
+import Test.Tasty (TestTree)
+
+prop_omega_infinite :: Property
+prop_omega_infinite = once (isFinite omega == Nothing)
+
+prop_list_monomorphism :: (Arbitrary a, Eq a, Show a) => [a] -> Property
+prop_list_monomorphism xs = Just xs === isFinite (fromList xs)
+
+return []
+
+tests :: TestTree
+tests = testProperties "Data.Ordinal.List" $allProperties

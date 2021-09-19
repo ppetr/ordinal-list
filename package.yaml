@@ -63,3 +63,5 @@ tests:
     dependencies:
     - ordinal-list
     - QuickCheck
+    - tasty
+    - tasty-quickcheck
