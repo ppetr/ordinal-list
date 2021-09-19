@@ -20,14 +20,19 @@ import qualified Data.Stream as S
 import Test.QuickCheck
 
 instance (Arbitrary a) => Arbitrary (OList a) where
-    arbitrary = frequency
-        [ (1, pure Zero)
-        , (5, Omega <$> arbitrary <*> arbitrary <*> arbitrary)
-        ]
+    arbitrary = getSize >>= genWith arbitrary
+      where
+        genWith :: Gen a -> Int -> Gen (OList a)
+        genWith f 0 = pure Zero
+        genWith f n = frequency
+            [ (1, pure Zero)
+            , (1, Omega <$> f <*> genWith (genStream f) (n - 1) <*> listOf f)
+            ]
+        genStream :: Gen a -> Gen (S.Stream a)
+        genStream = fmap S.cycle . listOf1
     shrink Zero = []
     shrink (Omega x xo xs)
-        = [Omega x Zero xs] ++
-          [Omega x' xo' xs' | (x', xo', xs') <- shrink (x, xo, xs)]
+        = Zero : [Omega x xo' xs' | (xo', xs') <- shrink (xo, xs)]
 
 -- | A data type with a structure very similar to `OList`, but using finite
 -- lists instead of `Stream`s. This allows printing and comparing test values.
@@ -40,5 +45,6 @@ sampleToFinite n (Omega x xo xs)
     = Omega' x (S.take n <$> sampleToFinite n xo) xs
 
 -- | Compares two `OList` instances up to a certain predefined depth.
+infix 4 =~=
 (=~=) :: (Eq a, Show a) => OList a -> OList a -> Property
-xo =~= yo = sampleToFinite 5 xo === sampleToFinite 5 yo
+xo =~= yo = sampleToFinite 3 xo === sampleToFinite 3 yo
