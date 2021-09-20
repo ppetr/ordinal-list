@@ -15,12 +15,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Data.Ordinal.List.Tests where
 
-import Data.Maybe (isNothing)
-import Data.Ordinal.List
-import Data.Ordinal.List.Arbitrary
-import Test.QuickCheck
-import Test.Tasty.QuickCheck as QC
-import Test.Tasty (TestTree)
+import           Data.Maybe                     ( isNothing )
+import           Data.Ordinal.List
+import           Data.Ordinal.List.Arbitrary
+import           Test.QuickCheck
+import           Test.Tasty                     ( TestTree )
+import           Test.Tasty.QuickCheck         as QC
 
 prop_omega_infinite :: Property
 prop_omega_infinite = once (isNothing $ isFinite omega)
@@ -28,8 +28,8 @@ prop_omega_infinite = once (isNothing $ isFinite omega)
 prop_list_monomorphism :: (Arbitrary a, Eq a, Show a) => [a] -> Property
 prop_list_monomorphism xs = Just xs === isFinite (fromList xs)
 
-prop_semigroup :: (Arbitrary a, Eq a, Show a)
-               => OList a -> OList a -> OList a -> Property
+prop_semigroup
+    :: (Arbitrary a, Eq a, Show a) => OList a -> OList a -> OList a -> Property
 prop_semigroup x y z = (x <> y) <> z =~= x <> (y <> z)
 
 return []

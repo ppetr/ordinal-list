@@ -13,7 +13,7 @@
 -- under the License.
 
 import qualified Data.Ordinal.List.Tests
-import Test.Tasty
+import           Test.Tasty
 
 main :: IO ()
 main = defaultMain tests

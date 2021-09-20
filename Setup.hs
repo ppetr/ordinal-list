@@ -12,5 +12,5 @@
 -- License for the specific language governing permissions and limitations
 -- under the License.
 
-import Distribution.Simple
+import           Distribution.Simple
 main = defaultMain

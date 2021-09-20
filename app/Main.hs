@@ -14,7 +14,7 @@
 
 module Main where
 
-import Data.Ordinal.List
+import           Data.Ordinal.List
 
 main :: IO ()
 main = undefined

@@ -15,9 +15,9 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Data.Ordinal.List.Arbitrary where
 
-import Data.Ordinal.List
-import qualified Data.Stream as S
-import Test.QuickCheck
+import           Data.Ordinal.List
+import qualified Data.Stream                   as S
+import           Test.QuickCheck
 
 instance (Arbitrary a) => Arbitrary (OList a) where
     arbitrary = getSize >>= genWith arbitrary
@@ -31,8 +31,8 @@ instance (Arbitrary a) => Arbitrary (OList a) where
         genStream :: Gen a -> Gen (S.Stream a)
         genStream = fmap S.cycle . listOf1
     shrink Zero = []
-    shrink (Omega x xo xs)
-        = Zero : [Omega x xo' xs' | (xo', xs') <- shrink (xo, xs)]
+    shrink (Omega x xo xs) =
+        Zero : [ Omega x xo' xs' | (xo', xs') <- shrink (xo, xs) ]
 
 -- | A data type with a structure very similar to `OList`, but using finite
 -- lists instead of `Stream`s. This allows printing and comparing test values.
@@ -41,8 +41,8 @@ data OListSample a = Zero' | Omega' a (OListSample [a]) [a]
 
 sampleToFinite :: Int -> OList a -> OListSample a
 sampleToFinite _ Zero = Zero'
-sampleToFinite n (Omega x xo xs)
-    = Omega' x (S.take n <$> sampleToFinite n xo) xs
+sampleToFinite n (Omega x xo xs) =
+    Omega' x (S.take n <$> sampleToFinite n xo) xs
 
 -- | Compares two `OList` instances up to a certain predefined depth.
 infix 4 =~=
