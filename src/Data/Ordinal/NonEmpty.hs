@@ -41,7 +41,7 @@ withPrefix x        (Power ys y) = Power (f (S.prefix x) ys) y
   where
     f :: (Stream a -> Stream a) -> OList1 (Stream a) -> OList1 (Stream a)
     f h (End (ws :| wss)) = End (h ws :| wss)
-    f h (Power vs v     ) = Power (f (\(Cons w ws) -> Cons (h w) ws) vs) v
+    f h (Power vs v     ) = Power (f (\ ~(Cons w ws) -> Cons (h w) ws) vs) v
 {-# INLINE withPrefix #-}
 
 omega :: Stream a -> OList1 a
@@ -73,7 +73,10 @@ timesList f ys = sconcat (fmap (\y -> f <&> ($ y)) ys)
 -- This essentially implements carrying over a "tail" of an ordinal as a
 -- function, as we nest in its next `Stream` level.
 nestedCarry :: (a -> b -> c) -> [a] -> (b -> c -> c) -> (b -> Stream c -> Stream c)
-nestedCarry h xl carry v (z `Cons` zs) = S.prefix (xl <&> (`h` v)) (carry v z `Cons` zs)
+-- Note that the match on the last argument `Stream c` must be lazy so that the
+-- prefix is prepended before the tail is examined. Without it an infinite loop
+-- occurs.
+nestedCarry h xl carry v ~(z `Cons` zs) = S.prefix (xl <&> (`h` v)) (carry v z `Cons` zs)
 {-# INLINE nestedCarry #-}
 
 -- | Multiplication of an ordinal by an infinite ordinal.
