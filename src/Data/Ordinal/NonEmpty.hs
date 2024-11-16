@@ -100,3 +100,18 @@ instance Applicative OList1 where
     f <*> End ys             = timesList f ys
     f <*> Power y []         = Power (mul f y) []
     f <*> Power y (y' : yl') = Power (mul f y) [] <> timesList f (y' :| yl')
+
+-- * Other instances.
+
+-- | Prints a finite fragment of a list.
+instance (Show a) => Show (OList1 a) where
+    showsPrec _ = showsOList . fmap shows
+      where
+        showsOList :: OList1 ShowS -> ShowS
+        showsOList (End (x :| xl)) = showString "[" . x . append xl . showString "]"
+        showsOList (Power x xl) =
+            showString "[" . showsOList (prefixOf <$> x) . append xl . showString "]"
+        prefixOf :: Stream ShowS -> ShowS
+        prefixOf ~(x `Cons` xs) = showString "[" . x . append (S.take 3 xs) . showString ",...]"
+        append :: (Foldable f) => f ShowS -> ShowS
+        append = appEndo . foldMap (\x -> Endo (showString "," . x))
