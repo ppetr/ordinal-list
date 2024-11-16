@@ -30,6 +30,7 @@ import qualified Data.Stream                   as S
 data Ordinal a = End (NonEmpty a) | Power !(Ordinal (Stream a)) [a]
   deriving (Functor)
 
+-- | Prepends a given prefix to an ordinal.
 withPrefix :: [a] -> Ordinal a -> Ordinal a
 withPrefix []       y            = y
 withPrefix (x : xl) (End y     ) = End ((x :| xl) <> y)
@@ -38,6 +39,7 @@ withPrefix x        (Power ys y) = Power (f (S.prefix x) ys) y
     f :: (Stream a -> Stream a) -> Ordinal (Stream a) -> Ordinal (Stream a)
     f h (End (ws :| wss)) = End (h ws :| wss)
     f h (Power vs v     ) = Power (f (\(Cons w ws) -> Cons (h w) ws) vs) v
+{-# INLINE withPrefix #-}
 
 instance Semigroup (Ordinal a) where
     End x        <> End y = End (x <> y)
@@ -45,25 +47,43 @@ instance Semigroup (Ordinal a) where
     End x        <> y     = withPrefix (E.toList x) y
     (Power xs x) <> y     = let (Power ys' y') = withPrefix x y in Power (xs <> ys') y'
 
-timesOmega :: (a -> b -> c) -> NonEmpty a -> (b -> c -> c) -> Stream b -> Stream c
-timesOmega h xl carry = loop
-  where
-    carry' b (c `Cons` cs) = carry b c `Cons` cs
-    xl' = E.toList xl
-    loop (b `Cons` bs) = S.prefix (xl' <&> (`h` b)) . carry' b $ loop bs
+-- | The given function must prepend at least one element to a stream,
+-- otherwise the computation diverges.
+timesOmega :: (b -> Stream c -> Stream c) -> Stream b -> Stream c
+timesOmega f = loop  where
+    loop (b `Cons` bs) = f b $ loop bs
+    {-# INLINE loop #-}
+{-# INLINE timesOmega #-}
 
 timesList :: Ordinal (b -> c) -> NonEmpty b -> Ordinal c
 timesList f ys = sconcat (fmap (\y -> f <&> ($ y)) ys)
+{-# INLINE timesList #-}
 
+-- | Applies a carry-over value expressed as function `b -> c -> c` to the
+-- first element of a stream, and then prepends elements produced by mapping
+-- over a `[a]` with a given function.
+--
+-- This essentially implements carrying over a "tail" of an ordinal as a
+-- function, as we nest in its next `Stream` level.
+nestedCarry :: (a -> b -> c) -> [a] -> (b -> c -> c) -> (b -> Stream c -> Stream c)
+nestedCarry h xl carry v (z `Cons` zs) = S.prefix (xl <&> (`h` v)) (carry v z `Cons` zs)
+{-# INLINE nestedCarry #-}
+
+-- | Multiplication of an ordinal by an infinite ordinal.
+--
+-- It's implemented by nesting into the first ordinal and converting the
+-- ordinal to a function `b -> c -> c` that prepends the respective product
+-- values to `c`. Eventually the whole ordinal is converted to such a function
+-- and then executed by `timesOmega`.
 mul :: forall b c . Ordinal (b -> c) -> Ordinal (Stream b) -> Ordinal (Stream c)
 mul x y = loop ($) x (const id)
   where
     loop :: forall a c . (a -> b -> c) -> Ordinal a -> (b -> c -> c) -> Ordinal (Stream c)
-    loop h (Power x xl) carry = Power (loop h' x carry') []
-      where
-        h' us v = us <&> (`h` v)
-        carry' v (z `Cons` zs) = S.prefix (map (`h` v) xl) (carry v z `Cons` zs)
-    loop h (End xl) carry = timesOmega h xl carry <$> y
+    loop h (Power x xl) carry = Power (loop h' x (nestedCarry h xl carry)) []
+        where h' us v = us <&> (`h` v)
+    loop h (End xl) carry = timesOmega (nestedCarry h (E.toList xl) carry) <$> y
+    {-# INLINE loop #-}
+{-# INLINE mul #-}
 
 instance Applicative Ordinal where
     pure x = End (x :| [])
