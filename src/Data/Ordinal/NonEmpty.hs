@@ -58,7 +58,7 @@ instance Semigroup (OList1 a) where
 -- otherwise the computation diverges.
 timesOmega :: (b -> Stream c -> Stream c) -> Stream b -> Stream c
 timesOmega f = loop  where
-    loop (b `Cons` bs) = f b $ loop bs
+    loop ~(b `Cons` bs) = f b $ loop bs
     {-# INLINE loop #-}
 {-# INLINE timesOmega #-}
 
