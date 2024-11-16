@@ -14,8 +14,9 @@
 {-# LANGUAGE DeriveFunctor, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -W #-}
 module Data.Ordinal.ListExp
-    ( Ordinal(..)
+    ( OList1(..)
     , withPrefix
+    , omega
     ) where
 
 import           Data.Functor                   ( (<&>) )
@@ -25,23 +26,29 @@ import           Data.Semigroup
 import           Data.Stream                    ( Stream(Cons) )
 import qualified Data.Stream                   as S
 
+-- | Non-empty ordinal-indexed list up to ω^ω.
+--
 -- TODO: Use a strict-spine `NonEmpty` list if possible in `End` to enforce
 -- that it's never infinite.
-data Ordinal a = End (NonEmpty a) | Power !(Ordinal (Stream a)) [a]
+data OList1 a = End (NonEmpty a) | Power !(OList1 (Stream a)) [a]
   deriving (Functor)
 
 -- | Prepends a given prefix to an ordinal.
-withPrefix :: [a] -> Ordinal a -> Ordinal a
+withPrefix :: [a] -> OList1 a -> OList1 a
 withPrefix []       y            = y
 withPrefix (x : xl) (End y     ) = End ((x :| xl) <> y)
 withPrefix x        (Power ys y) = Power (f (S.prefix x) ys) y
   where
-    f :: (Stream a -> Stream a) -> Ordinal (Stream a) -> Ordinal (Stream a)
+    f :: (Stream a -> Stream a) -> OList1 (Stream a) -> OList1 (Stream a)
     f h (End (ws :| wss)) = End (h ws :| wss)
     f h (Power vs v     ) = Power (f (\(Cons w ws) -> Cons (h w) ws) vs) v
 {-# INLINE withPrefix #-}
 
-instance Semigroup (Ordinal a) where
+omega :: Stream a -> OList1 a
+omega xs = Power (End (xs :| [])) []
+{-# INLINE omega #-}
+
+instance Semigroup (OList1 a) where
     End x        <> End y = End (x <> y)
     (Power xs x) <> End y = Power xs (x ++ E.toList y)
     End x        <> y     = withPrefix (E.toList x) y
@@ -55,7 +62,7 @@ timesOmega f = loop  where
     {-# INLINE loop #-}
 {-# INLINE timesOmega #-}
 
-timesList :: Ordinal (b -> c) -> NonEmpty b -> Ordinal c
+timesList :: OList1 (b -> c) -> NonEmpty b -> OList1 c
 timesList f ys = sconcat (fmap (\y -> f <&> ($ y)) ys)
 {-# INLINE timesList #-}
 
@@ -75,17 +82,17 @@ nestedCarry h xl carry v (z `Cons` zs) = S.prefix (xl <&> (`h` v)) (carry v z `C
 -- ordinal to a function `b -> c -> c` that prepends the respective product
 -- values to `c`. Eventually the whole ordinal is converted to such a function
 -- and then executed by `timesOmega`.
-mul :: forall b c . Ordinal (b -> c) -> Ordinal (Stream b) -> Ordinal (Stream c)
+mul :: forall b c . OList1 (b -> c) -> OList1 (Stream b) -> OList1 (Stream c)
 mul x y = loop ($) x (const id)
   where
-    loop :: forall a c . (a -> b -> c) -> Ordinal a -> (b -> c -> c) -> Ordinal (Stream c)
+    loop :: forall a c . (a -> b -> c) -> OList1 a -> (b -> c -> c) -> OList1 (Stream c)
     loop h (Power x xl) carry = Power (loop h' x (nestedCarry h xl carry)) []
         where h' us v = us <&> (`h` v)
     loop h (End xl) carry = timesOmega (nestedCarry h (E.toList xl) carry) <$> y
     {-# INLINE loop #-}
 {-# INLINE mul #-}
 
-instance Applicative Ordinal where
+instance Applicative OList1 where
     pure x = End (x :| [])
     f <*> End ys             = timesList f ys
     f <*> Power y []         = Power (mul f y) []
