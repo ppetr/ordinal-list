@@ -16,7 +16,10 @@
 module Data.Ordinal.ListExp
     ( OList1(..)
     , withPrefix
+    , fromNonEmpty
+    , fromStream
     , omega
+    , isFinite
     ) where
 
 import           Data.Functor                   ( (<&>) )
@@ -43,10 +46,6 @@ withPrefix x        (Power ys y) = Power (f (S.prefix x) ys) y
     f h (End (ws :| wss)) = End (h ws :| wss)
     f h (Power vs v     ) = Power (f (\ ~(Cons w ws) -> Cons (h w) ws) vs) v
 {-# INLINE withPrefix #-}
-
-omega :: Stream a -> OList1 a
-omega xs = Power (End (xs :| [])) []
-{-# INLINE omega #-}
 
 instance Semigroup (OList1 a) where
     End x        <> End y = End (x <> y)
@@ -115,3 +114,25 @@ instance (Show a) => Show (OList1 a) where
         prefixOf ~(x `Cons` xs) = showString "[" . x . append (S.take 3 xs) . showString ",...]"
         append :: (Foldable f) => f ShowS -> ShowS
         append = appEndo . foldMap (\x -> Endo (showString "," . x))
+
+
+-- * Construction
+
+fromNonEmpty :: NonEmpty a -> OList1 a
+fromNonEmpty = End
+{-# INLINE fromNonEmpty #-}
+
+fromStream :: Stream a -> OList1 a
+fromStream xs = Power (End (xs :| [])) []
+{-# INLINE fromStream #-}
+
+omega :: OList1 Integer
+omega = fromStream (S.iterate (+ 1) 0)
+{-# INLINABLE omega #-}
+
+-- * Inspection
+
+isFinite :: OList1 a -> Maybe (NonEmpty a)
+isFinite (End x) = Just x
+isFinite _       = Nothing
+{-# INLINABLE isFinite #-}
