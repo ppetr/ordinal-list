@@ -19,6 +19,7 @@ module Data.Ordinal.List
     , fromFinite
     , fromStream
     , omega
+    , namedOrdinals
     ) where
 
 import           Control.Applicative
@@ -77,3 +78,21 @@ instance Alternative OList where
 --
 -- Then `h` equals `Zero` iff program P runs indefinitely, thus solving the
 -- halting problem.
+
+-- * Set theory
+
+-- | Stream of ordinals, where the `i`-th element is an ordinal ω^i containing
+-- human representation of all ordinals below it.
+--
+-- The stream yields all ordinals representable by the `OList` type.
+namedOrdinals :: Stream (OList String)
+namedOrdinals = fmap show omega `Cons` S.zipWith f (S.iterate (+ 1) 1) namedOrdinals
+  where
+    f n o = (\s i -> power i n ++ s) <$> o <*> omega
+    power 0 _ = ""
+    power i 0 = show i ++ "+"
+    power 1 1 = o ++ "+"
+    power 1 j = o ++ "^" ++ show j ++ "+"
+    power i 1 = show i ++ o ++ "+"
+    power i j = show i ++ o ++ "^" ++ show j ++ "+"
+    o = "\x03C9" :: String

@@ -149,8 +149,3 @@ isFinite _             = Nothing
 
 -- | Zips two lists together and returns
 --zipSplit :: OList1 a -> OList1 b -> (OList1 (a, b), OList1Ordering a b)
-
--- * Set theory
-
--- | Stream
---namedOrdinals :: Stream (OList1 String)
