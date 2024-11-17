@@ -13,7 +13,7 @@
 -- under the License.
 {-# LANGUAGE DeriveFunctor, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -W #-}
-module Data.Ordinal.ListExp
+module Data.Ordinal.NonEmpty
     ( OList1(..)
     , withPrefix
     , fromNonEmpty
