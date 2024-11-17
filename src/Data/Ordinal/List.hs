@@ -21,16 +21,16 @@ module Data.Ordinal.List
     , omega
     ) where
 
-import Control.Applicative
-import Data.Foldable (toList)
+import           Control.Applicative
+import           Data.Foldable                  ( toList )
 import qualified Data.List.NonEmpty            as E
 import           Data.Monoid                    ( Endo(..) )
+import           Data.Ordinal.NonEmpty          ( OList1() )
+import qualified Data.Ordinal.NonEmpty         as N
 import           Data.Sequence                  ( Seq(..) )
 import qualified Data.Sequence                 as Q
 import           Data.Stream                    ( Stream(Cons) )
 import qualified Data.Stream                   as S
-import Data.Ordinal.NonEmpty (OList1())
-import qualified Data.Ordinal.NonEmpty as N
 
 -- | Represents a list indexed by ordinals < ω^ω.
 newtype OList a = OList (Maybe (OList1 a))
@@ -38,16 +38,16 @@ newtype OList a = OList (Maybe (OList1 a))
 
 -- | Prints a finite fragment of an ordinal list.
 instance (Show a) => Show (OList a) where
-    showsPrec _ (OList Nothing) = showString "[]"
+    showsPrec _ (OList Nothing ) = showString "[]"
     showsPrec _ (OList (Just x)) = shows x
 
-isFinite :: OList a -> Maybe [a]
-isFinite (OList Nothing)  = Nothing
-isFinite (OList (Just x)) = E.toList <$> N.isFinite x
+isFinite :: OList a -> Maybe (Seq a)
+isFinite (OList Nothing ) = Just Q.Empty
+isFinite (OList (Just x)) = N.isFinite x
 
 fromFinite :: (Foldable f) => f a -> OList a
 fromFinite xl | (x : xl') <- toList xl = OList (Just $ N.fromNonEmpty (x E.:| xl'))
-              | otherwise = mempty
+              | otherwise              = mempty
 
 fromStream :: Stream a -> OList a
 fromStream = OList . Just . N.fromStream
@@ -57,8 +57,8 @@ omega = OList (Just N.omega)
 
 instance Applicative OList where
     pure = OList . Just . pure
-    (OList Nothing) <*> _ = empty
-    _ <*> (OList Nothing) = empty
+    (OList Nothing)  <*> _                = empty
+    _                <*> (OList Nothing ) = empty
     (OList (Just x)) <*> (OList (Just y)) = OList (Just $ x <*> y)
 
 instance Alternative OList where
