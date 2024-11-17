@@ -109,9 +109,9 @@ instance (Show a) => Show (OList1 a) where
     showsPrec _ = showsOList . fmap shows
       where
         showsOList :: OList1 ShowS -> ShowS
-        showsOList (Finite x xl) = showString "[" . x . append xl . showString "]"
+        showsOList (Finite x xl) = showString "<" . x . append xl . showString ">"
         showsOList (Power x xl) =
-            showString "[" . showsOList (prefixOf <$> x) . append xl . showString "]"
+            showString "<" . showsOList (prefixOf <$> x) . append xl . showString ">"
         prefixOf :: Stream ShowS -> ShowS
         prefixOf ~(x `Cons` xs) = showString "[" . x . append (S.take 3 xs) . showString ",...]"
         append :: (Foldable f) => f ShowS -> ShowS

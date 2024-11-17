@@ -17,6 +17,7 @@ module Data.Ordinal.List
     ( OList()
     , isFinite
     , fromFinite
+    , fromSeq
     , fromStream
     , omega
     , namedOrdinals
@@ -24,6 +25,7 @@ module Data.Ordinal.List
 
 import           Control.Applicative
 import           Data.Foldable                  ( toList )
+import           Data.List                      ( intersperse )
 import qualified Data.List.NonEmpty            as E
 import           Data.Monoid                    ( Endo(..) )
 import           Data.Ordinal.NonEmpty          ( OList1() )
@@ -39,12 +41,17 @@ newtype OList a = OList (Maybe (OList1 a))
 
 -- | Prints a finite fragment of an ordinal list.
 instance (Show a) => Show (OList a) where
-    showsPrec _ (OList Nothing ) = showString "[]"
+    showsPrec _ (OList Nothing ) = showString "<>"
     showsPrec _ (OList (Just x)) = shows x
 
 isFinite :: OList a -> Maybe (Seq a)
 isFinite (OList Nothing ) = Just Q.Empty
 isFinite (OList (Just x)) = N.isFinite x
+
+fromSeq :: Seq a -> OList a
+fromSeq Q.Empty      = empty
+fromSeq (x Q.:<| xl) = OList (Just $ N.fromSeq x xl)
+{-# INLINE fromSeq #-}
 
 fromFinite :: (Foldable f) => f a -> OList a
 fromFinite xl | (x : xl') <- toList xl = OList (Just $ N.fromNonEmpty (x E.:| xl'))
@@ -86,13 +93,15 @@ instance Alternative OList where
 --
 -- The stream yields all ordinals representable by the `OList` type.
 namedOrdinals :: Stream (OList String)
-namedOrdinals = fmap show omega `Cons` S.zipWith f (S.iterate (+ 1) 1) namedOrdinals
+namedOrdinals = pure "0" `Cons` S.zipWith f (S.iterate (+ 1) 0) namedOrdinals
   where
-    f n o = (\s i -> power i n ++ s) <$> o <*> omega
-    power 0 _ = ""
-    power i 0 = show i ++ "+"
-    power 1 1 = o ++ "+"
-    power 1 j = o ++ "^" ++ show j ++ "+"
-    power i 1 = show i ++ o ++ "+"
-    power i j = show i ++ o ++ "^" ++ show j ++ "+"
+    f n o = (\s i -> sum $ power i n ++ [ s | s /= "0" ]) <$> o <*> omega
+    power 0 _ = []
+    power i 0 = [show i]
+    power 1 1 = [o]
+    power 1 j = [o ++ "^" ++ show j]
+    power i 1 = [show i ++ o]
+    power i j = [show i ++ o ++ "^" ++ show j]
     o = "\x03C9" :: String
+    sum [] = "0"
+    sum xs = mconcat . intersperse "+" $ xs
