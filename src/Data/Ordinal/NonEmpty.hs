@@ -21,6 +21,7 @@ module Data.Ordinal.NonEmpty
     , fromStream
     , omega
     , isFinite
+    , head1
     ) where
 
 import           Data.Foldable                  ( toList )
@@ -48,6 +49,12 @@ withPrefix x          (Power  ys y ) = Power (f (S.prefix $ toList x) ys) y
     f h (Finite ws wss) = Finite (h ws) wss
     f h (Power  vs v  ) = Power (f (\ ~(Cons w ws) -> Cons (h w) ws) vs) v
 {-# INLINE withPrefix #-}
+
+-- | Van Laarhoven lens for accessing the first element.
+head1 :: (Functor f) => (a -> f a) -> OList1 a -> f (OList1 a)
+head1 f (Finite x xl) = f x <&> (`Finite` xl)
+head1 f (Power  x xl) = head1 (\ ~(v `Cons` vs) -> f v <&> (`Cons` vs)) x <&> (`Power` xl)
+{-# INLINABLE head1 #-}
 
 instance Semigroup (OList1 a) where
     Finite x  xl <> Finite y yl = Finite x (xl <> (y <| yl))
