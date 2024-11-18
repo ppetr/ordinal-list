@@ -21,6 +21,8 @@ module Data.Ordinal.List
     , fromStream
     , omega
     , namedOrdinals
+    , VonNeumann
+    , vonNeumann
     ) where
 
 import           Control.Applicative
@@ -105,3 +107,22 @@ namedOrdinals = pure "0" `Cons` S.zipWith f (S.iterate (+ 1) 0) namedOrdinals
     o = "\x03C9" :: String
     sum [] = "0"
     sum xs = mconcat . intersperse "+" $ xs
+
+-- | Experimental, not really tested if the functions below compute correctly.
+newtype VonNeumann = VonNeumann (OList VonNeumann)
+
+instance Semigroup VonNeumann where
+    x@(VonNeumann x') <> VonNeumann y = VonNeumann (x' <> fmap (x <>) y)
+
+instance Monoid VonNeumann where
+    mempty = VonNeumann mempty
+
+instance Show VonNeumann where
+    showsPrec _ (VonNeumann o) = showString "vN" . shows o
+
+-- | An infinite stream of von Neumann ordinals 1, ω, ω^2, ...
+vonNeumann :: Stream VonNeumann
+vonNeumann = VonNeumann (pure mempty) `Cons` fmap timesOmega vonNeumann
+  where
+    timesOmega :: VonNeumann -> VonNeumann
+    timesOmega o = VonNeumann . fromStream $ S.iterate (o <>) o
