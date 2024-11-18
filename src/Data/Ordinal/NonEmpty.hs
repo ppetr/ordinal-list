@@ -26,6 +26,7 @@ module Data.Ordinal.NonEmpty
 
 import           Data.Foldable                  ( toList )
 import           Data.Functor                   ( (<&>) )
+import           Data.Functor.Identity
 import           Data.List.NonEmpty             ( NonEmpty(..) )
 import           Data.Semigroup
 import           Data.Sequence                  ( (<|)
@@ -43,11 +44,7 @@ data OList1 a = Finite a (Seq a) | Power !(OList1 (Stream a)) (Seq a)
 withPrefix :: Seq a -> OList1 a -> OList1 a
 withPrefix Empty      y              = y
 withPrefix (x :<| xl) (Finite y  yl) = Finite x (xl <> (y <| yl))
-withPrefix x          (Power  ys y ) = Power (f (S.prefix $ toList x) ys) y
-  where
-    f :: (Stream a -> Stream a) -> OList1 (Stream a) -> OList1 (Stream a)
-    f h (Finite ws wss) = Finite (h ws) wss
-    f h (Power  vs v  ) = Power (f (\ ~(Cons w ws) -> Cons (h w) ws) vs) v
+withPrefix x (Power ys y) = Power (runIdentity $ head1 (Identity . S.prefix (toList x)) ys) y
 {-# INLINE withPrefix #-}
 
 -- | Van Laarhoven lens for accessing the first element.
