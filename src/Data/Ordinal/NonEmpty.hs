@@ -19,6 +19,7 @@ module Data.Ordinal.NonEmpty
     , fromNonEmpty
     , fromSeq
     , fromStream
+    , wrapStream
     , omega
     , isFinite
     , head1
@@ -133,8 +134,12 @@ fromSeq = Finite
 {-# INLINE fromSeq #-}
 
 fromStream :: Stream a -> OList1 a
-fromStream xs = Power (Finite xs Empty) Empty
+fromStream = wrapStream . pure
 {-# INLINE fromStream #-}
+
+wrapStream :: OList1 (Stream a) -> OList1 a
+wrapStream x = Power x Empty
+{-# INLINABLE wrapStream #-}
 
 omega :: OList1 Integer
 omega = fromStream (S.iterate (+ 1) 0)

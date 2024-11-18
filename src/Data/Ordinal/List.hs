@@ -19,6 +19,7 @@ module Data.Ordinal.List
     , fromFinite
     , fromSeq
     , fromStream
+    , wrapStream
     , omega
     , namedOrdinals
     , VonNeumann
@@ -61,6 +62,10 @@ fromFinite xl | (x : xl') <- toList xl = OList (Just $ N.fromNonEmpty (x E.:| xl
 
 fromStream :: Stream a -> OList a
 fromStream = OList . Just . N.fromStream
+
+wrapStream :: OList (Stream a) -> OList a
+wrapStream (OList (Just x)) = OList . Just . N.wrapStream $ x
+wrapStream (OList Nothing ) = OList Nothing
 
 omega :: OList Integer
 omega = OList (Just N.omega)
