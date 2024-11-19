@@ -23,8 +23,11 @@ import qualified Data.Sequence                 as Q
 import qualified Data.Stream                   as S
 import           Test.QuickCheck
 
+sampleSize :: (Num a) => a
+sampleSize = 3
+
 instance (Arbitrary a) => Arbitrary (OList a) where
-    arbitrary = getSize >>= genWith . ceiling . logBase 2 . fromIntegral
+    arbitrary = getSize >>= genWith . floor . logBase sampleSize . fromIntegral
       where
         genWith :: (Arbitrary a) => Int -> Gen (OList a)
         genWith 0     = pure <$> arbitrary
@@ -35,7 +38,7 @@ instance (Arbitrary a) => Arbitrary (OList a) where
                 (:^> left) <$> genWith (depth - 1)
     -- TODO: Shrink the limit ordinal part.
     shrink (xs :^> xl) =
-        let xl' = Q.fromList <$> shrink (toList xl) in (:^>) <$> [xs, mempty] <*> xl'
+        let xl' = Q.fromList <$> shrink (toList xl) in (:^>) <$> [mempty, xs] <*> xl'
 
 -- | A data type with a structure very similar to `OList`, but using finite
 -- lists instead of `Stream`s. This allows printing and comparing test values.
@@ -43,10 +46,10 @@ data OListSample a = Zero' | Omega' (OListSample (Seq a)) (Seq a)
   deriving (Eq, Functor, Ord, Show)  -- TODO: Custom Show similar to `OList`'s.
 
 sampleToFinite :: Int -> OList a -> OListSample a
-sampleToFinite n ( Zero :^> Empty) = Zero'
-sampleToFinite n ~(xs   :^> xl   ) = Omega' (Q.fromList . S.take n <$> sampleToFinite n xs) xl
+sampleToFinite n (Zero :^> Empty) = Zero'
+sampleToFinite n (xs   :^> xl   ) = Omega' (Q.fromList . S.take n <$> sampleToFinite n xs) xl
 
 -- | Compares two `OList` instances up to a certain predefined depth.
 infix 4 =~=
 (=~=) :: (Eq a, Show a) => OList a -> OList a -> Property
-(=~=) = on (===) (sampleToFinite 3)
+(=~=) = on (===) (sampleToFinite sampleSize)
