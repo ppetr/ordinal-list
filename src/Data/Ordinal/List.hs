@@ -26,7 +26,6 @@ module Data.Ordinal.List
 import           Control.Applicative
 import           Data.Foldable                  ( toList )
 import           Data.List                      ( intersperse )
-import qualified Data.List.NonEmpty            as E
 import           Data.Ordinal.NonEmpty          ( OList1() )
 import qualified Data.Ordinal.NonEmpty         as N
 import           Data.Sequence                  ( Seq(..) )
@@ -42,11 +41,15 @@ newtype OList a = OList (Maybe (OList1 a))
 -- finite. And since we only represent ordinals below ω^ω, repeating this
 -- decomposition always reaches a point at which the first argument becomes `Zero`.
 pattern (:^>) :: OList (Stream a) -> Seq a -> OList a
-pattern limit :^> xl <- (decompose -> (limit, xl)) where
+pattern limit :^> xl <- (decompose -> ~(limit, xl)) where
     (:^>) = compose
 
-pattern Zero <- OList Nothing
-pattern NonEmpty x <- OList (Just x)
+pattern Zero :: OList a
+pattern Zero <- OList Nothing where
+    Zero = OList Nothing
+pattern NonEmpty :: OList1 a -> OList a
+pattern NonEmpty x <- OList (Just x) where
+    NonEmpty x = OList (Just x)
 
 compose :: OList (Stream a) -> Seq a -> OList a
 compose (OList (Just xs)) xl         = OList (Just (N.Power xs xl))
@@ -102,9 +105,9 @@ instance Alternative OList where
 --
 -- The stream yields all ordinals representable by the `OList` type.
 namedOrdinals :: Stream (OList String)
-namedOrdinals = pure "0" `Cons` S.zipWith f (S.iterate (+ 1) 0) namedOrdinals
+namedOrdinals = pure "0" `Cons` S.zipWith f (S.iterate (+ 1) (0 :: Integer)) namedOrdinals
   where
-    f n o = (\s i -> sum $ power i n ++ [ s | s /= "0" ]) <$> o <*> omega
+    f n x = (\s i -> plus $ power i n ++ [ s | s /= "0" ]) <$> x <*> omega
     power 0 _ = []
     power i 0 = [show i]
     power 1 1 = [o]
@@ -112,8 +115,8 @@ namedOrdinals = pure "0" `Cons` S.zipWith f (S.iterate (+ 1) 0) namedOrdinals
     power i 1 = [show i ++ o]
     power i j = [show i ++ o ++ "^" ++ show j]
     o = "\x03C9" :: String
-    sum [] = "0"
-    sum xs = mconcat . intersperse "+" $ xs
+    plus [] = "0"
+    plus xs = mconcat . intersperse "+" $ xs
 
 -- | Experimental, not really tested if the functions below compute correctly.
 newtype VonNeumann = VonNeumann (OList VonNeumann)
