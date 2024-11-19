@@ -36,9 +36,13 @@ instance (Arbitrary a) => Arbitrary (OList a) where
             nested = do
                 left <- arbitrary
                 (:^> left) <$> genWith (depth - 1)
-    -- TODO: Shrink the limit ordinal part.
-    shrink (xs :^> xl) =
-        let xl' = Q.fromList <$> shrink (toList xl) in (:^>) <$> [mempty, xs] <*> xl'
+    -- Shrink by:
+    -- - Dropping the infinite part completely.
+    -- - Taking only the heads of elements in `xs`.
+    -- - Shrinking the tail (finite) part.
+    shrink Zero          = []
+    shrink (Zero :^> xl) = (Zero :^>) <$> shrink xl
+    shrink (xs :^> xl) = [Zero :^> xl, fmap S.head xs <> (Zero :^> xl)] ++ ((xs :^>) <$> shrink xl)
 
 -- | A data type with a structure very similar to `OList`, but using finite
 -- lists instead of `Stream`s. This allows printing and comparing test values.
