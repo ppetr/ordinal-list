@@ -92,7 +92,7 @@ nestedCarry h xl carry v ~(z `Cons` zs) = S.prefix (toList xl <&> (`h` v)) (carr
 -- values to `c`. Eventually the whole ordinal is converted to such a function
 -- and then executed by `timesOmega`.
 mul :: forall b c . OList1 (b -> c) -> OList1 (Stream b) -> OList1 (Stream c)
-mul x y = loop ($) x (const id)
+mul x0 y = loop ($) x0 (const id)
   where
     loop :: forall a c . (a -> b -> c) -> OList1 a -> (b -> c -> c) -> OList1 (Stream c)
     loop h (Power x xl) carry = Power (loop h' x (nestedCarry h xl carry)) Empty
