@@ -14,7 +14,7 @@
 
 {-# LANGUAGE DeriveFunctor, GeneralizedNewtypeDeriving, PatternSynonyms, ViewPatterns #-}
 module Data.Ordinal.List
-    ( OList((:^>))
+    ( OList((:^>), NonEmpty, Zero)
     , fromFinite
     , fromStream
     , omega
@@ -39,11 +39,14 @@ newtype OList a = OList (Maybe (OList1 a))
   deriving (Functor, Monoid, Semigroup)
 
 -- | Witnesses that an ordinal can be uniquely decomposed to ω⋅γ+η where η is
--- finite. And since we only represent ordinals below ω^ω, this repeating this
--- decomposition always reaches a point at which the first argument becomes 0.
+-- finite. And since we only represent ordinals below ω^ω, repeating this
+-- decomposition always reaches a point at which the first argument becomes `Zero`.
 pattern (:^>) :: OList (Stream a) -> Seq a -> OList a
 pattern limit :^> xl <- (decompose -> (limit, xl)) where
     (:^>) = compose
+
+pattern Zero <- OList Nothing
+pattern NonEmpty x <- OList (Just x)
 
 compose :: OList (Stream a) -> Seq a -> OList a
 compose (OList (Just xs)) xl         = OList (Just (N.Power xs xl))
