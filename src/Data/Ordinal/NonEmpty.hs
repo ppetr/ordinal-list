@@ -11,31 +11,35 @@
 -- WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
 -- License for the specific language governing permissions and limitations
 -- under the License.
-{-# LANGUAGE DeriveFunctor, ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -W #-}
-module Data.Ordinal.NonEmpty
-    ( OList1(..)
-    , withPrefix
-    , fromNonEmpty
-    , fromSeq
-    , fromStream
-    , wrapStream
-    , omega
-    , isFinite
-    , head1
-    ) where
 
-import           Data.Foldable                  ( toList )
-import           Data.Functor                   ( (<&>) )
-import           Data.Functor.Identity
-import           Data.List.NonEmpty             ( NonEmpty(..) )
-import           Data.Semigroup
-import           Data.Sequence                  ( (<|)
-                                                , Seq(..)
-                                                )
-import qualified Data.Sequence                 as Q
-import           Data.Stream                    ( Stream(Cons) )
-import qualified Data.Stream                   as S
+module Data.Ordinal.NonEmpty
+  ( OList1 (..),
+    withPrefix,
+    fromNonEmpty,
+    fromSeq,
+    fromStream,
+    wrapStream,
+    omega,
+    isFinite,
+    head1,
+  )
+where
+
+import Data.Foldable (toList)
+import Data.Functor ((<&>))
+import Data.Functor.Identity
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Semigroup
+import Data.Sequence
+  ( Seq (..),
+    (<|),
+  )
+import qualified Data.Sequence as Q
+import Data.Stream (Stream (Cons))
+import qualified Data.Stream as S
 
 -- | Non-empty ordinal-indexed list up to ω^ω.
 data OList1 a = Finite a (Seq a) | Power !(OList1 (Stream a)) (Seq a)
@@ -43,27 +47,28 @@ data OList1 a = Finite a (Seq a) | Power !(OList1 (Stream a)) (Seq a)
 
 -- | Prepends a given prefix to an ordinal.
 withPrefix :: Seq a -> OList1 a -> OList1 a
-withPrefix Empty      y              = y
-withPrefix (x :<| xl) (Finite y  yl) = Finite x (xl <> (y <| yl))
+withPrefix Empty y = y
+withPrefix (x :<| xl) (Finite y yl) = Finite x (xl <> (y <| yl))
 withPrefix x (Power ys y) = Power (runIdentity $ head1 (Identity . S.prefix (toList x)) ys) y
 {-# INLINE withPrefix #-}
 
 -- | Van Laarhoven lens for accessing the first element.
 head1 :: (Functor f) => (a -> f a) -> OList1 a -> f (OList1 a)
 head1 f (Finite x xl) = f x <&> (`Finite` xl)
-head1 f (Power  x xl) = head1 (\ ~(v `Cons` vs) -> f v <&> (`Cons` vs)) x <&> (`Power` xl)
-{-# INLINABLE head1 #-}
+head1 f (Power x xl) = head1 (\ ~(v `Cons` vs) -> f v <&> (`Cons` vs)) x <&> (`Power` xl)
+{-# INLINEABLE head1 #-}
 
 instance Semigroup (OList1 a) where
-    Finite x  xl <> Finite y yl = Finite x (xl <> (y <| yl))
-    Power  xs x  <> Finite y yl = Power xs (x <> (y <| yl))
-    Finite x  xl <> y           = withPrefix (x <| xl) y
-    Power  xs x  <> y           = let (Power ys' y') = withPrefix x y in Power (xs <> ys') y'
+  Finite x xl <> Finite y yl = Finite x (xl <> (y <| yl))
+  Power xs x <> Finite y yl = Power xs (x <> (y <| yl))
+  Finite x xl <> y = withPrefix (x <| xl) y
+  Power xs x <> y = let (Power ys' y') = withPrefix x y in Power (xs <> ys') y'
 
 -- | The given function must prepend at least one element to a stream,
 -- otherwise the computation diverges.
 timesOmega :: (b -> Stream c -> Stream c) -> Stream b -> Stream c
-timesOmega f = loop  where
+timesOmega f = loop
+  where
     loop ~(b `Cons` bs) = f b $ loop bs
     {-# INLINE loop #-}
 {-# INLINE timesOmega #-}
@@ -91,37 +96,37 @@ nestedCarry h xl carry v ~(z `Cons` zs) = S.prefix (toList xl <&> (`h` v)) (carr
 -- ordinal to a function `b -> c -> c` that prepends the respective product
 -- values to `c`. Eventually the whole ordinal is converted to such a function
 -- and then executed by `timesOmega`.
-mul :: forall b c . OList1 (b -> c) -> OList1 (Stream b) -> OList1 (Stream c)
+mul :: forall b c. OList1 (b -> c) -> OList1 (Stream b) -> OList1 (Stream c)
 mul x0 y = loop ($) x0 (const id)
   where
-    loop :: forall a c . (a -> b -> c) -> OList1 a -> (b -> c -> c) -> OList1 (Stream c)
+    loop :: forall a c. (a -> b -> c) -> OList1 a -> (b -> c -> c) -> OList1 (Stream c)
     loop h (Power x xl) carry = Power (loop h' x (nestedCarry h xl carry)) Empty
-        where h' us v = us <&> (`h` v)
+      where
+        h' us v = us <&> (`h` v)
     loop h (Finite x xl) carry = timesOmega (nestedCarry h (x <| xl) carry) <$> y
     {-# INLINE loop #-}
 {-# INLINE mul #-}
 
 instance Applicative OList1 where
-    pure x = Finite x Empty
-    f <*> Finite y ys           = timesList f (y :| toList ys)
-    f <*> Power  y Empty        = Power (mul f y) Empty
-    f <*> Power  y (y' :<| yl') = Power (mul f y) Empty <> timesList f (y' :| toList yl')
+  pure x = Finite x Empty
+  f <*> Finite y ys = timesList f (y :| toList ys)
+  f <*> Power y Empty = Power (mul f y) Empty
+  f <*> Power y (y' :<| yl') = Power (mul f y) Empty <> timesList f (y' :| toList yl')
 
 -- * Other instances.
 
 -- | Prints a finite fragment of a list.
 instance (Show a) => Show (OList1 a) where
-    showsPrec _ = showsOList . fmap shows
-      where
-        showsOList :: OList1 ShowS -> ShowS
-        showsOList (Finite x xl) = showString "<" . x . append xl . showString ">"
-        showsOList (Power x xl) =
-            showString "<" . showsOList (prefixOf <$> x) . append xl . showString ">"
-        prefixOf :: Stream ShowS -> ShowS
-        prefixOf ~(x `Cons` xs) = showString "[" . x . append (S.take 3 xs) . showString ",...]"
-        append :: (Foldable f) => f ShowS -> ShowS
-        append = appEndo . foldMap (\x -> Endo (showString "," . x))
-
+  showsPrec _ = showsOList . fmap shows
+    where
+      showsOList :: OList1 ShowS -> ShowS
+      showsOList (Finite x xl) = showString "<" . x . append xl . showString ">"
+      showsOList (Power x xl) =
+        showString "<" . showsOList (prefixOf <$> x) . append xl . showString ">"
+      prefixOf :: Stream ShowS -> ShowS
+      prefixOf ~(x `Cons` xs) = showString "[" . x . append (S.take 3 xs) . showString ",...]"
+      append :: (Foldable f) => f ShowS -> ShowS
+      append = appEndo . foldMap (\x -> Endo (showString "," . x))
 
 -- * Construction
 
@@ -139,11 +144,11 @@ fromStream = wrapStream . pure
 
 wrapStream :: OList1 (Stream a) -> OList1 a
 wrapStream x = Power x Empty
-{-# INLINABLE wrapStream #-}
+{-# INLINEABLE wrapStream #-}
 
 omega :: OList1 Integer
 omega = fromStream (S.iterate (+ 1) 0)
-{-# INLINABLE omega #-}
+{-# INLINEABLE omega #-}
 
 -- * Inspection
 
@@ -151,10 +156,10 @@ omega = fromStream (S.iterate (+ 1) 0)
 -- Otherwise return `Nothing`.
 isFinite :: OList1 a -> Maybe (Seq a)
 isFinite (Finite x xl) = Just (x <| xl)
-isFinite _             = Nothing
-{-# INLINABLE isFinite #-}
+isFinite _ = Nothing
+{-# INLINEABLE isFinite #-}
 
 -- data OList1Ordering a b = OList1LE (OList1 b) | OList1EQ | OList1GE (OList1 a)
 
 -- | Zips two lists together and returns
---zipSplit :: OList1 a -> OList1 b -> (OList1 (a, b), OList1Ordering a b)
+-- zipSplit :: OList1 a -> OList1 b -> (OList1 (a, b), OList1Ordering a b)

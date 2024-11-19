@@ -11,27 +11,31 @@
 -- WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
 -- License for the specific language governing permissions and limitations
 -- under the License.
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE ViewPatterns #-}
 
-{-# LANGUAGE DeriveFunctor, GeneralizedNewtypeDeriving, PatternSynonyms, ViewPatterns #-}
 module Data.Ordinal.List
-    ( OList((:^>), NonEmpty, Zero)
-    , fromFinite
-    , fromStream
-    , omega
-    , namedOrdinals
-    , VonNeumann
-    , vonNeumann
-    ) where
+  ( OList ((:^>), NonEmpty, Zero),
+    fromFinite,
+    fromStream,
+    omega,
+    namedOrdinals,
+    VonNeumann,
+    vonNeumann,
+  )
+where
 
-import           Control.Applicative
-import           Data.Foldable                  ( toList )
-import           Data.List                      ( intersperse )
-import           Data.Ordinal.NonEmpty          ( OList1() )
-import qualified Data.Ordinal.NonEmpty         as N
-import           Data.Sequence                  ( Seq(..) )
-import qualified Data.Sequence                 as Q
-import           Data.Stream                    ( Stream(Cons) )
-import qualified Data.Stream                   as S
+import Control.Applicative
+import Data.Foldable (toList)
+import Data.List (intersperse)
+import Data.Ordinal.NonEmpty (OList1 ())
+import qualified Data.Ordinal.NonEmpty as N
+import Data.Sequence (Seq (..))
+import qualified Data.Sequence as Q
+import Data.Stream (Stream (Cons))
+import qualified Data.Stream as S
 
 -- | Represents a list indexed by ordinals < ω^ω.
 newtype OList a = OList (Maybe (OList1 a))
@@ -41,30 +45,37 @@ newtype OList a = OList (Maybe (OList1 a))
 -- finite. And since we only represent ordinals below ω^ω, repeating this
 -- decomposition always reaches a point at which the first argument becomes `Zero`.
 pattern (:^>) :: OList (Stream a) -> Seq a -> OList a
-pattern limit :^> xl <- (decompose -> ~(limit, xl)) where
+pattern limit :^> xl <-
+  (decompose -> ~(limit, xl))
+  where
     (:^>) = compose
 
 pattern Zero :: OList a
-pattern Zero <- OList Nothing where
+pattern Zero <-
+  OList Nothing
+  where
     Zero = OList Nothing
+
 pattern NonEmpty :: OList1 a -> OList a
-pattern NonEmpty x <- OList (Just x) where
+pattern NonEmpty x <-
+  OList (Just x)
+  where
     NonEmpty x = OList (Just x)
 
 compose :: OList (Stream a) -> Seq a -> OList a
-compose (OList (Just xs)) xl         = OList (Just (N.Power xs xl))
-compose (OList Nothing  ) (x :<| xl) = OList (Just (N.Finite x xl))
-compose (OList Nothing  ) Empty      = OList Nothing
+compose (OList (Just xs)) xl = OList (Just (N.Power xs xl))
+compose (OList Nothing) (x :<| xl) = OList (Just (N.Finite x xl))
+compose (OList Nothing) Empty = OList Nothing
 
 decompose :: OList a -> (OList (Stream a), Seq a)
-decompose (OList Nothing                ) = (mempty, Empty)
-decompose (OList (Just (N.Finite x  xl))) = (mempty, x Q.<| xl)
-decompose (OList (Just (N.Power  xs xl))) = (OList (Just xs), xl)
+decompose (OList Nothing) = (mempty, Empty)
+decompose (OList (Just (N.Finite x xl))) = (mempty, x Q.<| xl)
+decompose (OList (Just (N.Power xs xl))) = (OList (Just xs), xl)
 
 -- | Prints a finite fragment of an ordinal list.
 instance (Show a) => Show (OList a) where
-    showsPrec _ (OList Nothing ) = showString "<>"
-    showsPrec _ (OList (Just x)) = shows x
+  showsPrec _ (OList Nothing) = showString "<>"
+  showsPrec _ (OList (Just x)) = shows x
 
 fromFinite :: (Foldable f) => f a -> OList a
 fromFinite = (mempty :^>) . Q.fromList . toList
@@ -76,14 +87,14 @@ omega :: OList Integer
 omega = OList (Just N.omega)
 
 instance Applicative OList where
-    pure = OList . Just . pure
-    (OList Nothing)  <*> _                = empty
-    _                <*> (OList Nothing ) = empty
-    (OList (Just x)) <*> (OList (Just y)) = OList (Just $ x <*> y)
+  pure = OList . Just . pure
+  (OList Nothing) <*> _ = empty
+  _ <*> (OList Nothing) = empty
+  (OList (Just x)) <*> (OList (Just y)) = OList (Just $ x <*> y)
 
 instance Alternative OList where
-    empty = mempty
-    (<|>) = (<>)
+  empty = mempty
+  (<|>) = (<>)
 
 -- There is no `Monad` instance for `OList`.
 --
@@ -107,7 +118,7 @@ instance Alternative OList where
 namedOrdinals :: Stream (OList String)
 namedOrdinals = pure "0" `Cons` S.zipWith f (S.iterate (+ 1) (0 :: Integer)) namedOrdinals
   where
-    f n x = (\s i -> plus $ power i n ++ [ s | s /= "0" ]) <$> x <*> omega
+    f n x = (\s i -> plus $ power i n ++ [s | s /= "0"]) <$> x <*> omega
     power 0 _ = []
     power i 0 = [show i]
     power 1 1 = [o]
@@ -122,13 +133,13 @@ namedOrdinals = pure "0" `Cons` S.zipWith f (S.iterate (+ 1) (0 :: Integer)) nam
 newtype VonNeumann = VonNeumann (OList VonNeumann)
 
 instance Semigroup VonNeumann where
-    x@(VonNeumann x') <> VonNeumann y = VonNeumann (x' <> fmap (x <>) y)
+  x@(VonNeumann x') <> VonNeumann y = VonNeumann (x' <> fmap (x <>) y)
 
 instance Monoid VonNeumann where
-    mempty = VonNeumann mempty
+  mempty = VonNeumann mempty
 
 instance Show VonNeumann where
-    showsPrec _ (VonNeumann o) = showString "vN" . shows o
+  showsPrec _ (VonNeumann o) = showString "vN" . shows o
 
 -- | An infinite stream of von Neumann ordinals 1, ω, ω^2, ...
 vonNeumann :: Stream VonNeumann
