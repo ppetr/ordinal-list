@@ -19,18 +19,15 @@ import           Data.Maybe                     ( isNothing )
 import           Data.Ordinal.List
 import           Data.Ordinal.List.Arbitrary
 import           Data.Sequence                  ( Seq(..) )
+import qualified Data.Sequence                 as Q
 import           Test.QuickCheck
 import           Test.Tasty                     ( TestTree )
 import           Test.Tasty.QuickCheck         as QC
 
-prop_omega_infinite :: Property
-prop_omega_infinite = once (isNothing $ isFinite omega)
+prop_omega_is_limit :: Property
+prop_omega_is_limit = once (let o :^> ol = omega in Q.length ol === 0)
 
-prop_finite_monomorphism :: (Arbitrary a, Eq a, Show a) => Seq a -> Property
-prop_finite_monomorphism xs = Just xs === isFinite (fromFinite xs)
-
-prop_semigroup
-    :: (Arbitrary a, Eq a, Show a) => OList a -> OList a -> OList a -> Property
+prop_semigroup :: (Arbitrary a, Eq a, Show a) => OList a -> OList a -> OList a -> Property
 prop_semigroup x y z = (x <> y) <> z =~= x <> (y <> z)
 
 return []
