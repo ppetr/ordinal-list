@@ -12,14 +12,13 @@
 -- License for the specific language governing permissions and limitations
 -- under the License.
 
-{-# LANGUAGE DeriveFunctor, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveFunctor, GeneralizedNewtypeDeriving, PatternSynonyms, ViewPatterns #-}
 module Data.Ordinal.List
-    ( OList()
+    ( OList((:^>))
     , isFinite
     , fromFinite
     , fromSeq
     , fromStream
-    , wrapStream
     , omega
     , namedOrdinals
     , VonNeumann
@@ -30,7 +29,6 @@ import           Control.Applicative
 import           Data.Foldable                  ( toList )
 import           Data.List                      ( intersperse )
 import qualified Data.List.NonEmpty            as E
-import           Data.Monoid                    ( Endo(..) )
 import           Data.Ordinal.NonEmpty          ( OList1() )
 import qualified Data.Ordinal.NonEmpty         as N
 import           Data.Sequence                  ( Seq(..) )
@@ -41,6 +39,20 @@ import qualified Data.Stream                   as S
 -- | Represents a list indexed by ordinals < ω^ω.
 newtype OList a = OList (Maybe (OList1 a))
   deriving (Functor, Monoid, Semigroup)
+
+pattern (:^>) :: OList (Stream a) -> Seq a -> OList a
+pattern limit :^> xl <- (decompose -> (limit, xl)) where
+    (:^>) = compose
+
+compose :: OList (Stream a) -> Seq a -> OList a
+compose (OList (Just xs)) xl         = OList (Just (N.Power xs xl))
+compose (OList Nothing  ) (x :<| xl) = OList (Just (N.Finite x xl))
+compose (OList Nothing  ) Empty      = OList Nothing
+
+decompose :: OList a -> (OList (Stream a), Seq a)
+decompose (OList Nothing                ) = (mempty, Empty)
+decompose (OList (Just (N.Finite x  xl))) = (mempty, x Q.<| xl)
+decompose (OList (Just (N.Power  xs xl))) = (OList (Just xs), xl)
 
 -- | Prints a finite fragment of an ordinal list.
 instance (Show a) => Show (OList a) where
@@ -62,10 +74,6 @@ fromFinite xl | (x : xl') <- toList xl = OList (Just $ N.fromNonEmpty (x E.:| xl
 
 fromStream :: Stream a -> OList a
 fromStream = OList . Just . N.fromStream
-
-wrapStream :: OList (Stream a) -> OList a
-wrapStream (OList (Just x)) = OList . Just . N.wrapStream $ x
-wrapStream (OList Nothing ) = OList Nothing
 
 omega :: OList Integer
 omega = OList (Just N.omega)
