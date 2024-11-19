@@ -15,9 +15,7 @@
 {-# LANGUAGE DeriveFunctor, GeneralizedNewtypeDeriving, PatternSynonyms, ViewPatterns #-}
 module Data.Ordinal.List
     ( OList((:^>))
-    , isFinite
     , fromFinite
-    , fromSeq
     , fromStream
     , omega
     , namedOrdinals
@@ -40,6 +38,9 @@ import qualified Data.Stream                   as S
 newtype OList a = OList (Maybe (OList1 a))
   deriving (Functor, Monoid, Semigroup)
 
+-- | Witnesses that an ordinal can be uniquely decomposed to ω⋅γ+η where η is
+-- finite. And since we only represent ordinals below ω^ω, this repeating this
+-- decomposition always reaches a point at which the first argument becomes 0.
 pattern (:^>) :: OList (Stream a) -> Seq a -> OList a
 pattern limit :^> xl <- (decompose -> (limit, xl)) where
     (:^>) = compose
@@ -59,21 +60,11 @@ instance (Show a) => Show (OList a) where
     showsPrec _ (OList Nothing ) = showString "<>"
     showsPrec _ (OList (Just x)) = shows x
 
-isFinite :: OList a -> Maybe (Seq a)
-isFinite (OList Nothing ) = Just Q.Empty
-isFinite (OList (Just x)) = N.isFinite x
-
-fromSeq :: Seq a -> OList a
-fromSeq Q.Empty      = empty
-fromSeq (x Q.:<| xl) = OList (Just $ N.fromSeq x xl)
-{-# INLINE fromSeq #-}
-
 fromFinite :: (Foldable f) => f a -> OList a
-fromFinite xl | (x : xl') <- toList xl = OList (Just $ N.fromNonEmpty (x E.:| xl'))
-              | otherwise              = mempty
+fromFinite = (mempty :^>) . Q.fromList . toList
 
 fromStream :: Stream a -> OList a
-fromStream = OList . Just . N.fromStream
+fromStream = (:^> Empty) . pure
 
 omega :: OList Integer
 omega = OList (Just N.omega)
