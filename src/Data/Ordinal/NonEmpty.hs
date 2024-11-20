@@ -25,9 +25,13 @@ module Data.Ordinal.NonEmpty
     omega,
     isFinite,
     head1,
+    OListOrdering (..),
+    ordinalOrdering,
+    zipSplit,
   )
 where
 
+import Control.Arrow (first)
 import Data.Foldable (toList)
 import Data.Functor ((<&>))
 import Data.Functor.Identity
@@ -62,7 +66,9 @@ instance Semigroup (OList1 a) where
   Finite x xl <> Finite y yl = Finite x (xl <> (y <| yl))
   Power xs x <> Finite y yl = Power xs (x <> (y <| yl))
   Finite x xl <> y = withPrefix (x <| xl) y
-  Power xs x <> y = let (Power ys' y') = withPrefix x y in Power (xs <> ys') y'
+  Power xs x <> y =
+    let (Power ys' y') = withPrefix x y
+     in Power (xs <> ys') y'
 
 -- | The given function must prepend at least one element to a stream,
 -- otherwise the computation diverges.
@@ -159,7 +165,59 @@ isFinite (Finite x xl) = Just (x <| xl)
 isFinite _ = Nothing
 {-# INLINEABLE isFinite #-}
 
--- data OList1Ordering a b = OList1LE (OList1 b) | OList1EQ | OList1GE (OList1 a)
+-- | Represents the result of zipping/comparing two ordinals and holds the
+-- remainder of the greater one of the two.
+data OListOrdering a b = OListLT (OList1 b) | OListEQ | OListGT (OList1 a)
+  deriving (Show)
 
--- | Zips two lists together and returns
--- zipSplit :: OList1 a -> OList1 b -> (OList1 (a, b), OList1Ordering a b)
+ordinalOrdering :: OListOrdering a b -> Ordering
+ordinalOrdering OListEQ = EQ
+ordinalOrdering (OListLT _) = LT
+ordinalOrdering (OListGT _) = GT
+
+stripPrefix :: Int -> OList1 (Stream a) -> (Seq a, OList1 (Stream a))
+stripPrefix o = head1 (first Q.fromList . S.splitAt o)
+{-# INLINE stripPrefix #-}
+
+zipPrefix :: (a -> b -> c) -> a -> Seq a -> OList1 (Stream b) -> (c, Seq c, OList1 (Stream b))
+zipPrefix f x xl o =
+  let (y :<| yl, o') = stripPrefix (Q.length xl + 1) o
+   in (f x y, Q.zipWith f xl yl, o')
+{-# INLINE zipPrefix #-}
+
+compareFinite :: Seq a -> Seq b -> (Seq (a, b), OListOrdering a b)
+compareFinite xl yl =
+  let m = min (Q.length xl) (Q.length yl)
+      xl' = Q.drop m xl
+      yl' = Q.drop m yl
+      z = Q.zip xl yl
+   in case (xl', yl') of
+        (u :<| us, _) -> (z, OListGT (fromSeq u us))
+        (_, v :<| vs) -> (z, OListLT (fromSeq v vs))
+        _ -> (z, OListEQ)
+{-# INLINE compareFinite #-}
+
+-- | See `zipSplit` in the `Lists` module.
+zipSplit :: OList1 a -> OList1 b -> (OList1 (a, b), OListOrdering a b)
+zipSplit (Finite x xl) (Finite y yl)
+  | (z :<| zl, o) <- compareFinite (x <| xl) (y <| yl) = (fromSeq z zl, o)
+  | otherwise = error "Can't happen - input sequences are both non-empty"
+zipSplit (Power x xl) (Finite y yl) =
+  let (z, zl, x') = zipPrefix (flip (,)) y yl x
+   in (fromSeq z zl, OListGT (Power x' xl))
+zipSplit (Finite x xl) (Power y yl) =
+  let (z, zl, y') = zipPrefix (,) x xl y
+   in (fromSeq z zl, OListLT (Power y' yl))
+zipSplit (Power x xl) (Power y yl) = case zipSplit x y of
+  (z, OListEQ) -> case compareFinite xl yl of
+    (zl, o) -> (Power (fmap (uncurry S.zip) z) zl, o) -- TODO xl yl
+  (z, OListLT y') | Empty <- xl -> (Power (fmap (uncurry S.zip) z) Empty, OListLT (Power y' yl))
+  (z, OListLT y')
+    | xl1 :<| xl' <- xl,
+      (z1', zl', y'') <- zipPrefix (,) xl1 xl' y' ->
+        (Power (fmap (uncurry S.zip) z) (z1' :<| zl'), OListLT (Power y'' yl))
+  (z, OListGT x') | Empty <- yl -> (Power (fmap (uncurry S.zip) z) Empty, OListGT (Power x' xl))
+  (z, OListGT x')
+    | yl1 :<| yl' <- yl,
+      (z1', zl', x'') <- zipPrefix (flip (,)) yl1 yl' x' ->
+        (Power (fmap (uncurry S.zip) z) (z1' :<| zl'), OListGT (Power x'' xl))

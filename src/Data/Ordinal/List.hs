@@ -21,6 +21,8 @@ module Data.Ordinal.List
     fromFinite,
     fromStream,
     omega,
+    N.OListOrdering (..),
+    zipSplit,
     namedOrdinals,
     VonNeumann,
     vonNeumann,
@@ -28,6 +30,7 @@ module Data.Ordinal.List
 where
 
 import Control.Applicative
+import Control.Arrow (first)
 import Data.Foldable (toList)
 import Data.List (intersperse)
 import Data.Ordinal.NonEmpty (OList1 ())
@@ -97,6 +100,17 @@ instance Applicative OList where
 instance Alternative OList where
   empty = mempty
   (<|>) = (<>)
+
+-- * Minus operation.
+
+-- | Witnesses the "ordinal" property ordinals: Given two ordinals, they're
+-- either equal, or one is a prefix of another. In such a case, the remainder
+-- is also an ordinal, which implements ordinal subtraction.
+zipSplit :: OList a -> OList b -> (OList (a, b), N.OListOrdering a b)
+zipSplit Zero Zero = (Zero, N.OListEQ)
+zipSplit Zero (NonEmpty y) = (Zero, N.OListLT y)
+zipSplit (NonEmpty x) Zero = (Zero, N.OListGT x)
+zipSplit (NonEmpty x) (NonEmpty y) = first NonEmpty $ N.zipSplit x y
 
 -- There is no `Monad` instance for `OList`.
 --
