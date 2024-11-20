@@ -17,6 +17,7 @@ module Data.Ordinal.List.Arbitrary where
 
 import Data.Foldable (toList)
 import Data.Function (on)
+import Data.Monoid
 import Data.Ordinal.List
 import Data.Sequence (Seq (..))
 import qualified Data.Sequence as Q
@@ -47,12 +48,27 @@ instance (Arbitrary a) => Arbitrary (OList a) where
 
 -- | A data type with a structure very similar to `OList`, but using finite
 -- lists instead of `Stream`s. This allows printing and comparing test values.
-data OListSample a = Zero' | Omega' (OListSample (Seq a)) (Seq a)
-  deriving (Eq, Functor, Ord, Show) -- TODO: Custom Show similar to `OList`'s.
+data OListSample a = Zero' | Power' (OListSample (Seq a)) (Seq a)
+  deriving (Eq, Functor, Ord)
+
+instance (Show a) => Show (OListSample a) where
+  showsPrec _ = showsSample . fmap shows
+    where
+      showsSample :: OListSample ShowS -> ShowS
+      showsSample Zero' = showString "<>"
+      showsSample (Power' Zero' Empty) = showString "<>"
+      showsSample (Power' Zero' (x :<| xl)) = showString "<" . x . append xl . showString ">"
+      showsSample (Power' x xl) =
+        showString "<" . showsSample (prefixOf <$> x) . append xl . showString ">"
+      prefixOf :: Seq ShowS -> ShowS
+      prefixOf Empty = showString "[]"
+      prefixOf (x :<| xs) = showString "[" . x . append xs . showString ",...]"
+      append :: Seq ShowS -> ShowS
+      append = appEndo . foldMap (\x -> Endo (showString "," . x))
 
 sampleToFinite :: Int -> OList a -> OListSample a
 sampleToFinite n (Zero :^> Empty) = Zero'
-sampleToFinite n (xs :^> xl) = Omega' (Q.fromList . S.take n <$> sampleToFinite n xs) xl
+sampleToFinite n (xs :^> xl) = Power' (Q.fromList . S.take n <$> sampleToFinite n xs) xl
 
 -- | Compares two `OList` instances up to a certain predefined depth.
 infix 4 =~=

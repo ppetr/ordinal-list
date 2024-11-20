@@ -52,6 +52,7 @@ pattern limit :^> xl <-
   (decompose -> ~(limit, xl))
   where
     (:^>) = compose
+
 {-# COMPLETE (:^>) #-}
 
 pattern Zero :: OList a
@@ -65,6 +66,7 @@ pattern NonEmpty x <-
   OList (Just x)
   where
     NonEmpty x = OList (Just x)
+
 {-# COMPLETE Zero, NonEmpty #-}
 
 compose :: OList (Stream a) -> Seq a -> OList a
