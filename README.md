@@ -2,7 +2,7 @@
 
 [1]: https://en.wikipedia.org/wiki/Ordinal_number
 
-_Status: Draft._
+_Status: Working implementation._
 
 _Disclaimer: This is not an official Google product._
 
@@ -12,6 +12,8 @@ In some languages (like Haskell) it is possible to have infinite lists
 (sometimes also called _streams_). This experimental library extends the
 concept to infinite lists indexed by ordinals beyond natural numbers, up to
 ω<sup>ω</sup>.
+
+![Illustration of ω<sup>ω</sup>](https://upload.wikimedia.org/wikipedia/commons/a/af/Omega-exp-omega-normal-dark_svg.svg)
 
 Preserving the ordinal structure allows to examine even infinite portions of
 such lists. For example, with Haskell's regular [infinite lists][infinite] `xs
